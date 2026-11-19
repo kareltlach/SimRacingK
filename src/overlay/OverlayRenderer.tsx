@@ -12,6 +12,7 @@ import { TrackMapGPSWidget } from '../renderer/components/widgets/TrackMapGPSWid
 import { TrendChartWidget } from '../renderer/components/widgets/TrendChartWidget'
 import { DeltaTraceWidget } from '../renderer/components/widgets/DeltaTraceWidget'
 import { FuelCalculatorWidget } from '../renderer/components/widgets/FuelCalculatorWidget'
+import { CustomOverlayView } from '../renderer/components/widgets/CustomOverlayView'
 import { SUPPORTED_TRACKS, normalizeTrackId } from '../shared/supportedTracks'
 
 interface Props {
@@ -132,6 +133,15 @@ const WIDGET_MAP: Record<string, React.FC<{ telemetry: TelemetryData; width: num
   ffbClip: ({ telemetry: t, width, height, transparent }) => (
     <FFBClipWidget ffbSignal={t.ffbSignal} width={width} height={height} transparent={transparent} />
   ),
+  custom: ({ telemetry: t, width, height, transparent }) => (
+    <CustomOverlayView
+      data={(t as any).customOverlayData || { canvasWidth: width, canvasHeight: height, backgroundColor: 'transparent', elements: [] }}
+      telemetry={t}
+      width={width}
+      height={height}
+      transparent={transparent}
+    />
+  ),
 }
 
 export const OverlayRenderer: React.FC<Props> = ({
@@ -142,7 +152,8 @@ export const OverlayRenderer: React.FC<Props> = ({
   onToggleTransparent,
   onToggleVisible,
 }) => {
-  const WidgetComponent = WIDGET_MAP[widget.type]
+  const isCustom = widget.type === 'custom' || widget.id.startsWith('custom')
+  const WidgetComponent = isCustom ? CustomOverlayView : WIDGET_MAP[widget.type]
   if (!WidgetComponent) return null
 
   const isTransparent = widget.theme === 'transparent' || widget.opacity <= 0.6
@@ -222,12 +233,22 @@ export const OverlayRenderer: React.FC<Props> = ({
         </div>
       )}
 
-      <WidgetComponent
-        telemetry={telemetry}
-        width={widget.width}
-        height={widget.height}
-        transparent={isTransparent}
-      />
+      {isCustom ? (
+        <CustomOverlayView
+          data={widget.customOverlayData || { canvasWidth: widget.width, canvasHeight: widget.height, backgroundColor: 'transparent', elements: [] }}
+          telemetry={telemetry}
+          width={widget.width}
+          height={widget.height}
+          transparent={isTransparent}
+        />
+      ) : (
+        <WidgetComponent
+          telemetry={telemetry}
+          width={widget.width}
+          height={widget.height}
+          transparent={isTransparent}
+        />
+      )}
     </div>
   )
 }

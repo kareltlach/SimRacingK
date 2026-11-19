@@ -74,6 +74,7 @@ export interface HudWidget {
   visible: boolean
   theme?: 'dark' | 'transparent' | 'carbon' | 'custom'
   backgroundColor?: string
+  customOverlayData?: any
 }
 
 export interface HudLayout {
@@ -204,6 +205,13 @@ export const OverlayApp: React.FC = () => {
     const trackIdParam = params.get('trackId') || ''
     const initW = parseInt(params.get('initW') || '400')
     const initH = parseInt(params.get('initH') || '200')
+    let parsedCustomData: any = undefined
+    try {
+      const rawCustom = params.get('customData')
+      if (rawCustom) {
+        parsedCustomData = JSON.parse(decodeURIComponent(rawCustom))
+      }
+    } catch {}
 
     if (isSolo && widgetId) {
       setIsStandalone(true)
@@ -219,6 +227,7 @@ export const OverlayApp: React.FC = () => {
                 widgetId === 'relatives' ? 'relatives' :
                   widgetId === 'track-map' ? 'trackMap' :
                     widgetId === 'fuel-calculator' ? 'fuelCalculator' :
+                    widgetId.startsWith('custom') ? 'custom' :
                       widgetId
       )
 
@@ -232,7 +241,8 @@ export const OverlayApp: React.FC = () => {
         scale: 1,
         opacity: 0.95,
         visible: true,
-        theme: 'transparent'
+        theme: 'transparent',
+        customOverlayData: parsedCustomData,
       })
     }
   }, [])

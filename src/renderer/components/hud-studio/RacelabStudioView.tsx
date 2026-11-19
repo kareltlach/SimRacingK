@@ -13,6 +13,9 @@ import { TrackMapGPSWidget } from '../widgets/TrackMapGPSWidget'
 import { TrendChartWidget } from '../widgets/TrendChartWidget'
 import { DeltaTraceWidget } from '../widgets/DeltaTraceWidget'
 import { FuelCalculatorWidget } from '../widgets/FuelCalculatorWidget'
+import { CustomOverlayView } from '../widgets/CustomOverlayView'
+import { CustomOverlayEditorModal } from './CustomOverlayEditorModal'
+import { CustomOverlayData } from '../../../shared/customOverlayTypes'
 
 export const RacelabStudioView: React.FC = () => {
   const widgets = useRacelabStore((s) => s.widgets)
@@ -39,6 +42,7 @@ export const RacelabStudioView: React.FC = () => {
   const [showNewModal, setShowNewModal] = useState(false)
   const [newWidgetName, setNewWidgetName] = useState('')
   const [newWidgetCategory, setNewWidgetCategory] = useState<OverlayWidgetConfig['category']>('Timing')
+  const [editingCustomWidgetId, setEditingCustomWidgetId] = useState<string | null>(null)
 
   const selectedTrackId = useRacelabStore((s) => s.selectedTrackId) || 'monza'
   const selectTrack = useRacelabStore((s) => s.selectTrack)
@@ -101,10 +105,12 @@ export const RacelabStudioView: React.FC = () => {
   const handleOpenStandaloneOverlay = (widget: OverlayWidgetConfig) => {
     const api = (window as any).api
     if (api?.overlay?.openStandaloneWidget) {
+      const isCustom = widget.id.startsWith('custom') || !!widget.customOverlayData
       api.overlay.openStandaloneWidget({
         id: widget.id,
         name: widget.name,
-        type: widget.id === 'delta-trace' ? 'deltaTrace' :
+        type: isCustom ? 'custom' :
+              widget.id === 'delta-trace' ? 'deltaTrace' :
               widget.id === 'tachometer-cluster' ? 'tachometer' :
               widget.id === 'input-telemetry' ? 'inputGraph' :
               widget.id === 'tire-monitor' ? 'tireMonitor' :
@@ -120,15 +126,17 @@ export const RacelabStudioView: React.FC = () => {
         opacity: (widget.opacity || 95) / 100,
         theme: widget.theme || 'transparent',
         trackId: selectedTrackId,
+        customData: widget.customOverlayData ? encodeURIComponent(JSON.stringify(widget.customOverlayData)) : undefined,
       })
     }
   }
 
   const handleCreateWidget = () => {
     if (newWidgetName.trim()) {
-      addNewCustomWidget(newWidgetName.trim(), newWidgetCategory)
+      const newId = addNewCustomWidget(newWidgetName.trim(), newWidgetCategory)
       setNewWidgetName('')
       setShowNewModal(false)
+      setEditingCustomWidgetId(newId)
     }
   }
 
@@ -544,6 +552,17 @@ export const RacelabStudioView: React.FC = () => {
                 </div>
 
                 <div className="flex items-center space-x-3">
+                  {(selectedWidget.id.startsWith('custom') || selectedWidget.customOverlayData) && (
+                    <button
+                      onClick={() => setEditingCustomWidgetId(selectedWidget.id)}
+                      className="px-3 py-1.5 bg-[#4f46e5] hover:bg-[#4338ca] text-white font-black rounded-lg text-xs tracking-wide shadow-lg shadow-indigo-950/60 transition-all flex items-center space-x-1.5 cursor-pointer"
+                      title="Abrir construtor visual de elementos para este overlay"
+                    >
+                      <span>✏️</span>
+                      <span>Editar Overlay Visual</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => handleOpenStandaloneOverlay(selectedWidget)}
                     className="px-3 py-1.5 bg-[#e11d48] hover:bg-[#ff003b] text-white font-black rounded-lg text-xs tracking-wide shadow-lg shadow-rose-950/60 transition-all flex items-center space-x-1.5 cursor-pointer"
@@ -683,6 +702,21 @@ export const RacelabStudioView: React.FC = () => {
                       transparent={selectedWidget.theme === 'transparent'}
                     />
                   )}
+                  {(selectedWidget.id.startsWith('custom') || selectedWidget.customOverlayData) && (
+                    <CustomOverlayView
+                      data={selectedWidget.customOverlayData || {
+                        id: selectedWidget.id,
+                        name: selectedWidget.name,
+                        canvasWidth: selectedWidget.width || 420,
+                        canvasHeight: selectedWidget.height || 220,
+                        backgroundColor: '#111318',
+                        elements: [],
+                      }}
+                      telemetry={telemetryData}
+                      width={Math.min(680, selectedWidget.width)}
+                      height={Math.min(260, selectedWidget.height)}
+                    />
+                  )}
                 </div>
               </div>
 
@@ -776,6 +810,19 @@ export const RacelabStudioView: React.FC = () => {
                     </div>
 
                     <div className="flex items-center space-x-2">
+                      {(w.id.startsWith('custom') || w.customOverlayData) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditingCustomWidgetId(w.id)
+                          }}
+                          className="px-2 py-1 rounded text-[10px] font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all cursor-pointer shadow-sm"
+                          title="Abrir editor visual"
+                        >
+                          ✏️ Editar
+                        </button>
+                      )}
+
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
@@ -904,6 +951,21 @@ export const RacelabStudioView: React.FC = () => {
                       {w.id === 'trend-chart' && (
                         <TrendChartWidget width={360} height={120} />
                       )}
+                      {(w.id.startsWith('custom') || w.customOverlayData) && (
+                        <CustomOverlayView
+                          data={w.customOverlayData || {
+                            id: w.id,
+                            name: w.name,
+                            canvasWidth: w.width || 420,
+                            canvasHeight: w.height || 220,
+                            backgroundColor: '#111318',
+                            elements: [],
+                          }}
+                          telemetry={telemetryData}
+                          width={320}
+                          height={120}
+                        />
+                      )}
                     </div>
 
                     <div className="flex justify-between items-center text-[10px] text-gray-600 font-mono border-t border-gray-800/60 pt-1">
@@ -1021,6 +1083,103 @@ export const RacelabStudioView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ─── MODAL DO EDITOR WYSIWYG DE OVERLAY PERSONALIZADO ─── */}
+      {editingCustomWidgetId && (() => {
+        const targetWidget = widgets.find((w) => w.id === editingCustomWidgetId)
+        if (!targetWidget) return null
+        const initialData: CustomOverlayData = targetWidget.customOverlayData || {
+          id: targetWidget.id,
+          name: targetWidget.name,
+          canvasWidth: targetWidget.width || 500,
+          canvasHeight: targetWidget.height || 300,
+          backgroundColor: '#0c0d12',
+          elements: [
+            {
+              id: 'elem-header',
+              name: 'Título Overlay',
+              type: 'text',
+              x: 16,
+              y: 16,
+              width: 200,
+              height: 28,
+              fontSize: 16,
+              fontWeight: 'bold',
+              textColor: '#ffffff',
+              staticText: targetWidget.name.toUpperCase(),
+              zIndex: 1,
+            },
+            {
+              id: 'elem-speed',
+              name: 'Velocímetro',
+              type: 'text',
+              x: 16,
+              y: 60,
+              width: 160,
+              height: 48,
+              fontSize: 36,
+              fontWeight: '900',
+              textColor: '#38bdf8',
+              fontFamily: 'monospace',
+              binding: {
+                telemetryKey: 'speedKmh',
+                suffix: ' km/h',
+                decimals: 0,
+              },
+              zIndex: 2,
+            },
+            {
+              id: 'elem-rpm-gauge',
+              name: 'Barra de RPM',
+              type: 'gauge-linear',
+              x: 16,
+              y: 120,
+              width: 320,
+              height: 18,
+              gaugeColor: '#e11d48',
+              backgroundColor: '#1f2233',
+              gaugeMin: 0,
+              gaugeMax: 8500,
+              binding: {
+                telemetryKey: 'rpm',
+              },
+              zIndex: 3,
+            },
+            {
+              id: 'elem-gear',
+              name: 'Marcha',
+              type: 'text',
+              x: 200,
+              y: 60,
+              width: 80,
+              height: 48,
+              fontSize: 38,
+              fontWeight: '900',
+              textColor: '#e11d48',
+              textAlign: 'center',
+              binding: {
+                telemetryKey: 'gear',
+              },
+              zIndex: 4,
+            }
+          ],
+        }
+
+        return (
+          <CustomOverlayEditorModal
+            initialData={initialData}
+            onClose={() => setEditingCustomWidgetId(null)}
+            onSave={(savedData) => {
+              updateWidgetProps(editingCustomWidgetId, {
+                customOverlayData: savedData,
+                width: savedData.canvasWidth,
+                height: savedData.canvasHeight,
+              })
+              setEditingCustomWidgetId(null)
+            }}
+          />
+        )
+      })()}
     </div>
   )
 }

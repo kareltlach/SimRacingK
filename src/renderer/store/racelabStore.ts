@@ -18,6 +18,7 @@ export interface OverlayWidgetConfig {
   refreshRateHz: number
   options: Record<string, any>
   previewImage?: string
+  customOverlayData?: any
 }
 
 export interface OverlayProfile {
@@ -193,7 +194,7 @@ interface RacelabStoreState {
   saveCurrentLayoutAsProfile: (profileName: string) => void
   loadProfile: (profileId: string) => void
   toggleOnlyThisWidget: (widgetId: string) => void
-  addNewCustomWidget: (name: string, category: OverlayWidgetConfig['category']) => void
+  addNewCustomWidget: (name: string, category: OverlayWidgetConfig['category']) => string
   deleteWidget: (id: string) => void
 }
 
@@ -303,8 +304,9 @@ export const useRacelabStore = create<RacelabStoreState>((set, get) => ({
   },
 
   addNewCustomWidget: (name, category) => {
+    const newId = `custom-${Date.now()}`
     const newW: OverlayWidgetConfig = {
-      id: `custom-${Date.now()}`,
+      id: newId,
       name,
       category,
       icon: '✨',
@@ -312,8 +314,8 @@ export const useRacelabStore = create<RacelabStoreState>((set, get) => ({
       enabled: true,
       x: 500,
       y: 500,
-      width: 360,
-      height: 200,
+      width: 420,
+      height: 240,
       scale: 1.0,
       opacity: 95,
       theme: 'dark',
@@ -322,8 +324,9 @@ export const useRacelabStore = create<RacelabStoreState>((set, get) => ({
     }
     set((s) => ({
       widgets: [...s.widgets, newW],
-      selectedWidgetId: newW.id
+      selectedWidgetId: newId,
     }))
+    return newId
   },
 
   deleteWidget: (id) =>
