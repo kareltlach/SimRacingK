@@ -120,8 +120,165 @@ export const CustomOverlayEditorModal: React.FC<Props> = ({
   const [activeTab, setActiveTab] = useState<'toolbox' | 'layers'>('toolbox')
   const [searchTelemetry, setSearchTelemetry] = useState('')
 
+  // ─── Drag state ───────────────────────────────────────────────────────────
+  const dragState = useRef<{
+    elId: string
+    startMouseX: number
+    startMouseY: number
+    startElX: number
+    startElY: number
+  } | null>(null)
+
+  // ─── Context menu state ───────────────────────────────────────────────────
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; elId: string } | null>(null)
+
   const canvasRef = useRef<HTMLDivElement>(null)
   const selectedEl = elements.find((e) => e.id === selectedElementId) || null
+
+  // Close context menu on outside click
+  useEffect(() => {
+    const close = () => setCtxMenu(null)
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [])
+
+  // ─── Drag handlers ────────────────────────────────────────────────────────
+  const handleElementMouseDown = useCallback((e: React.MouseEvent, elId: string) => {
+    if (e.button !== 0) return // only left-click drag
+    e.stopPropagation()
+    e.preventDefault()
+    setSelectedElementId(elId)
+    const el = elements.find((el) => el.id === elId)
+    if (!el) return
+    dragState.current = {
+      elId,
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      startElX: el.x,
+      startElY: el.y,
+    }
+
+    const onMouseMove = (me: MouseEvent) => {
+      if (!dragState.current) return
+      const dx = me.clientX - dragState.current.startMouseX
+      const dy = me.clientY - dragState.current.startMouseY
+      const newX = Math.max(0, dragState.current.startElX + dx)
+      const newY = Math.max(0, dragState.current.startElY + dy)
+      setElements((prev) =>
+        prev.map((el) => el.id === dragState.current!.elId ? { ...el, x: Math.round(newX), y: Math.round(newY) } : el)
+      )
+    }
+
+    const onMouseUp = () => {
+      dragState.current = null
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }, [elements])
+
+  // ─── Context menu actions ─────────────────────────────────────────────────
+  const handleContextMenu = useCallback((e: React.MouseEvent, elId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setSelectedElementId(elId)
+    setCtxMenu({ x: e.clientX, y: e.clientY, elId })
+  }, [])
+
+  const ctxEl = ctxMenu ? elements.find((e) => e.id === ctxMenu.elId) : null
+
+  const handleCtxDuplicate = () => {
+    if (!ctxEl) return
+    const dup: CustomOverlayElement = {
+      ...ctxEl,
+      id: `el-${Date.now()}`,
+      name: `${ctxEl.name} (Cópia)`,
+      x: ctxEl.x + 15,
+      y: ctxEl.y + 15,
+      zIndex: elements.length + 1,
+    }
+    setElements((prev) => [...prev, dup])
+    setSelectedElementId(dup.id)
+    setCtxMenu(null)
+  }
+
+  const handleCtxDelete = () => {
+    if (!ctxMenu) return
+    setElements((prev) => prev.filter((e) => e.id !== ctxMenu.elId))
+    setSelectedElementId(null)
+    setCtxMenu(null)
+  }
+
+  const handleCtxBringForward = () => {
+    if (!ctxEl) return
+    setElements((prev) =>
+      prev.map((e) => e.id === ctxEl.id ? { ...e, zIndex: (e.zIndex || 1) + 1 } : e)
+    )
+    setCtxMenu(null)
+  }
+
+  const handleCtxSendBackward = () => {
+    if (!ctxEl) return
+    setElements((prev) =>
+      prev.map((e) => e.id === ctxEl.id ? { ...e, zIndex: Math.max(1, (e.zIndex || 1) - 1) } : e)
+    )
+    setCtxMenu(null)
+  }
+
+  const handleCtxBringToFront = () => {
+    if (!ctxEl) return
+    const maxZ = Math.max(...elements.map((e) => e.zIndex || 1))
+    setElements((prev) =>
+      prev.map((e) => e.id === ctxEl.id ? { ...e, zIndex: maxZ + 1 } : e)
+    )
+    setCtxMenu(null)
+  }
+
+  const handleCtxSendToBack = () => {
+    if (!ctxEl) return
+    setElements((prev) =>
+      prev.map((e) => e.id === ctxEl.id ? { ...e, zIndex: 1 } : e)
+    )
+    setCtxMenu(null)
+  }
+
+  const handleCtxAlignLeft = () => {
+    if (!ctxEl) return
+    setElements((prev) => prev.map((e) => e.id === ctxEl.id ? { ...e, x: 0 } : e))
+    setCtxMenu(null)
+  }
+
+  const handleCtxAlignCenter = () => {
+    if (!ctxEl) return
+    setElements((prev) => prev.map((e) => e.id === ctxEl.id ? { ...e, x: Math.round((canvasWidth - e.width) / 2) } : e))
+    setCtxMenu(null)
+  }
+
+  const handleCtxAlignRight = () => {
+    if (!ctxEl) return
+    setElements((prev) => prev.map((e) => e.id === ctxEl.id ? { ...e, x: canvasWidth - e.width } : e))
+    setCtxMenu(null)
+  }
+
+  const handleCtxAlignTop = () => {
+    if (!ctxEl) return
+    setElements((prev) => prev.map((e) => e.id === ctxEl.id ? { ...e, y: 0 } : e))
+    setCtxMenu(null)
+  }
+
+  const handleCtxAlignMiddle = () => {
+    if (!ctxEl) return
+    setElements((prev) => prev.map((e) => e.id === ctxEl.id ? { ...e, y: Math.round((canvasHeight - e.height) / 2) } : e))
+    setCtxMenu(null)
+  }
+
+  const handleCtxAlignBottom = () => {
+    if (!ctxEl) return
+    setElements((prev) => prev.map((e) => e.id === ctxEl.id ? { ...e, y: canvasHeight - e.height } : e))
+    setCtxMenu(null)
+  }
 
   const handleUpdateSelected = (updates: Partial<CustomOverlayElement>) => {
     if (!selectedElementId) return
@@ -358,7 +515,7 @@ export const CustomOverlayEditorModal: React.FC<Props> = ({
         </aside>
 
         {/* ── CENTER: INTERACTIVE CANVAS VIEWPORT ── */}
-        <main className="flex-1 bg-[#06070a] flex items-center justify-center p-6 relative overflow-auto">
+        <main className="flex-1 bg-[#06070a] flex items-center justify-center p-6 relative overflow-auto" style={{ fontFamily: "'Roboto', 'Inter', sans-serif" }}>
           {/* Canvas Work Area */}
           <div
             ref={canvasRef}
@@ -369,18 +526,19 @@ export const CustomOverlayEditorModal: React.FC<Props> = ({
               boxShadow: '0 0 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1)',
               position: 'relative',
               borderRadius: '8px',
+              fontFamily: "'Roboto', 'Inter', sans-serif",
             }}
             className="overflow-hidden"
+            onClick={() => setSelectedElementId(null)}
           >
             {elements.map((el) => {
               const isSelected = el.id === selectedElementId
               return (
                 <div
                   key={el.id}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedElementId(el.id)
-                  }}
+                  onMouseDown={(e) => handleElementMouseDown(e, el.id)}
+                  onContextMenu={(e) => handleContextMenu(e, el.id)}
+                  onClick={(e) => { e.stopPropagation(); setSelectedElementId(el.id) }}
                   style={{
                     position: 'absolute',
                     left: `${el.x}px`,
@@ -400,21 +558,108 @@ export const CustomOverlayEditorModal: React.FC<Props> = ({
                     justifyContent: el.textAlign === 'left' ? 'flex-start' : el.textAlign === 'right' ? 'flex-end' : 'center',
                     padding: '2px 4px',
                     boxSizing: 'border-box',
+                    fontFamily: el.fontFamily === 'mono' ? 'monospace' : "'Roboto', 'Inter', sans-serif",
+                    userSelect: 'none',
                   }}
-                  className={`group select-none transition-shadow ${
-                    isSelected ? 'ring-2 ring-rose-500/50 shadow-lg shadow-rose-950/80' : ''
-                  }`}
+                  className={`${isSelected ? 'ring-2 ring-rose-500/50 shadow-lg shadow-rose-950/80' : ''}`}
                 >
                   {/* Element Content Render */}
                   {renderElementPreview(el, telemetryData)}
+
+                  {/* Selection handles */}
+                  {isSelected && (
+                    <>
+                      <div style={{ position:'absolute', top:-4, left:-4, width:8, height:8, background:'#e11d48', borderRadius:2, cursor:'nwse-resize' }} />
+                      <div style={{ position:'absolute', top:-4, right:-4, width:8, height:8, background:'#e11d48', borderRadius:2, cursor:'nesw-resize' }} />
+                      <div style={{ position:'absolute', bottom:-4, left:-4, width:8, height:8, background:'#e11d48', borderRadius:2, cursor:'nesw-resize' }} />
+                      <div style={{ position:'absolute', bottom:-4, right:-4, width:8, height:8, background:'#e11d48', borderRadius:2, cursor:'nwse-resize' }} />
+                    </>
+                  )}
                 </div>
               )
             })}
           </div>
 
           <div className="absolute bottom-3 left-4 text-[10px] text-gray-500 font-mono">
-            Dica: Clique em qualquer elemento para editar suas propriedades e linkar com dados da telemetria ao vivo.
+            Dica: Arraste elementos para reposicionar · Clique direito para mais ações
           </div>
+
+          {/* ── CONTEXT MENU ── */}
+          {ctxMenu && ctxEl && (
+            <div
+              style={{ position: 'fixed', top: ctxMenu.y, left: ctxMenu.x, zIndex: 9999 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#13141e] border border-[#2a2d40] rounded-lg shadow-2xl shadow-black/80 py-1 min-w-[200px] text-xs"
+            >
+              {/* Header */}
+              <div className="px-3 py-1.5 border-b border-[#2a2d40] mb-1">
+                <div className="font-bold text-white truncate">{ctxEl.name}</div>
+                <div className="text-[10px] text-gray-500 font-mono">{ctxEl.type} · z:{ctxEl.zIndex}</div>
+              </div>
+
+              {/* Selecionar */}
+              <button onClick={() => { setSelectedElementId(ctxEl.id); setCtxMenu(null) }} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-200 flex items-center space-x-2 cursor-pointer">
+                <span>🖱️</span><span>Selecionar</span>
+              </button>
+
+              <div className="border-t border-[#2a2d40] my-1" />
+
+              {/* Duplicar */}
+              <button onClick={handleCtxDuplicate} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-200 flex items-center space-x-2 cursor-pointer">
+                <span>📄</span><span>Duplicar</span>
+              </button>
+
+              <div className="border-t border-[#2a2d40] my-1" />
+
+              {/* Ordem */}
+              <div className="px-3 py-0.5 text-[10px] text-gray-500 uppercase tracking-wider font-bold">Ordem</div>
+              <button onClick={handleCtxBringToFront} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-300 flex items-center space-x-2 cursor-pointer">
+                <span>⬆️</span><span>Trazer para Frente (Topo)</span>
+              </button>
+              <button onClick={handleCtxBringForward} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-300 flex items-center space-x-2 cursor-pointer">
+                <span>🔼</span><span>Avançar uma camada</span>
+              </button>
+              <button onClick={handleCtxSendBackward} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-300 flex items-center space-x-2 cursor-pointer">
+                <span>🔽</span><span>Recuar uma camada</span>
+              </button>
+              <button onClick={handleCtxSendToBack} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-300 flex items-center space-x-2 cursor-pointer">
+                <span>⬇️</span><span>Enviar para o Fundo</span>
+              </button>
+
+              <div className="border-t border-[#2a2d40] my-1" />
+
+              {/* Alinhamento Horizontal */}
+              <div className="px-3 py-0.5 text-[10px] text-gray-500 uppercase tracking-wider font-bold">Alinhar Horizontal</div>
+              <button onClick={handleCtxAlignLeft} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-300 flex items-center space-x-2 cursor-pointer">
+                <span>⬅️</span><span>Alinhar à Esquerda</span>
+              </button>
+              <button onClick={handleCtxAlignCenter} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-300 flex items-center space-x-2 cursor-pointer">
+                <span>↔️</span><span>Centralizar</span>
+              </button>
+              <button onClick={handleCtxAlignRight} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-300 flex items-center space-x-2 cursor-pointer">
+                <span>➡️</span><span>Alinhar à Direita</span>
+              </button>
+
+              {/* Alinhamento Vertical */}
+              <div className="px-3 py-0.5 text-[10px] text-gray-500 uppercase tracking-wider font-bold mt-0.5">Alinhar Vertical</div>
+              <button onClick={handleCtxAlignTop} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-300 flex items-center space-x-2 cursor-pointer">
+                <span>⬆️</span><span>Alinhar ao Topo</span>
+              </button>
+              <button onClick={handleCtxAlignMiddle} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-300 flex items-center space-x-2 cursor-pointer">
+                <span>↕️</span><span>Centralizar Verticalmente</span>
+              </button>
+              <button onClick={handleCtxAlignBottom} className="w-full text-left px-3 py-1.5 hover:bg-[#1e2133] text-gray-300 flex items-center space-x-2 cursor-pointer">
+                <span>⬇️</span><span>Alinhar ao Rodapé</span>
+              </button>
+
+              <div className="border-t border-[#2a2d40] my-1" />
+
+              {/* Excluir */}
+              <button onClick={handleCtxDelete} className="w-full text-left px-3 py-1.5 hover:bg-rose-950/60 text-rose-400 flex items-center space-x-2 cursor-pointer">
+                <span>🗑</span><span>Excluir Elemento</span>
+              </button>
+            </div>
+          )}
         </main>
 
         {/* ── RIGHT PANEL: PROPRIEDADES & DATA BINDING TELEMETRIA ── */}
