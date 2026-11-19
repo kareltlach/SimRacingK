@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SimRacing K - Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: transparent;
+      /* Electron transparent window: allow click-through on empty space */
+      -webkit-app-region: no-drag;
+      user-select: none;
+    }
+    #overlay-root {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background: transparent;
+    }
+    /* Base font */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', 'JetBrains Mono', system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="overlay-root"></div>
+  <script type="module" src="./main.tsx"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+appId: com.simracingk.app
+productName: SimRacing K
+
+npmRebuild: false
+
+directories:
+  output: dist-binaries
+  buildResources: build
+
+files:
+  - "out/**/*"
+  - "resources/installer-readme.txt"
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: resources/icon.ico
+  signAndEditExecutable: false
+  sign: null
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  runAfterFinish: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: "SimRacing K"
+  include: "build/installer.nsh"
+
+mac:
+  target:
+    - target: dir
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.utilities
+  hardenedRuntime: false
+  identity: null
+
+protocols:
+  - name: SimRacing K
+    schemes:
+      - simracingk

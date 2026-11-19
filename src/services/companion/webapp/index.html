@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ApexTelemetry Companion</title>
+  <link rel="stylesheet" href="companion.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">ApexTelemetry Companion</div>
+    <div class="status-badge" id="conn-status">Disconnected</div>
+  </div>
+
+  <div class="telemetry-grid">
+    <div class="card gear-card">
+      <div class="label">GEAR</div>
+      <div class="value-large" id="gear">N</div>
+    </div>
+    <div class="card speed-card">
+      <div class="label">SPEED</div>
+      <div class="value-large" id="speed">0</div>
+      <div class="unit">KM/H</div>
+    </div>
+    <div class="card rpm-card">
+      <div class="label">RPM</div>
+      <div class="value-large" id="rpm">0</div>
+      <div class="rpm-bar"><div class="rpm-fill" id="rpm-fill"></div></div>
+    </div>
+    <div class="card delta-card">
+      <div class="label">DELTA</div>
+      <div class="value-large delta-val" id="delta">+0.00</div>
+    </div>
+  </div>
+
+  <div class="button-box-section">
+    <div class="section-title">VIRTUAL BUTTON BOX</div>
+    <div class="button-grid">
+      <button class="btn" id="btn-lights">LIGHTS</button>
+      <button class="btn" id="btn-wipers">WIPERS</button>
+      <button class="btn" id="btn-pit">PIT LIMITER</button>
+      <button class="btn" id="btn-abs-up">ABS +</button>
+      <button class="btn" id="btn-abs-down">ABS -</button>
+      <button class="btn" id="btn-tc-up">TC +</button>
+      <button class="btn" id="btn-tc-down">TC -</button>
+      <button class="btn" id="btn-hud-next">HUD PAGE</button>
+    </div>
+  </div>
+
+  <script src="companion.js"></script>
+</body>
+</html>
