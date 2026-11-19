@@ -34,6 +34,8 @@ export const RacelabStudioView: React.FC = () => {
   const loadProfile = useRacelabStore((s) => s.loadProfile)
   const profiles = useRacelabStore((s) => s.profiles)
   const activeProfileId = useRacelabStore((s) => s.activeProfileId)
+  const addNewCustomWidget = useRacelabStore((s) => s.addNewCustomWidget)
+  const deleteWidget = useRacelabStore((s) => s.deleteWidget)
   const [showSaveLayoutModal, setShowSaveLayoutModal] = useState(false)
   const [layoutSaveName, setLayoutSaveName] = useState('')
   const [showLayoutDropdown, setShowLayoutDropdown] = useState(false)
@@ -96,8 +98,19 @@ export const RacelabStudioView: React.FC = () => {
     { name: 'Fuel & Energy', icon: '⛽' },
   ]
 
+  // Widgets criados pelo usuário (overlays personalizados)
+  const customWidgets = widgets.filter(
+    (w) => w.id.startsWith('custom-') || w.customOverlayData
+  )
+
   const filteredWidgets = widgets.filter((w) => {
+    if (w.id.startsWith('custom-') || w.customOverlayData) return false // separado na seção "Meus Overlays"
     if (activeTab === 'FAVORITES' && !w.isFavorite) return false
+    if (filterText && !w.name.toLowerCase().includes(filterText.toLowerCase())) return false
+    return true
+  })
+
+  const filteredCustomWidgets = customWidgets.filter((w) => {
     if (filterText && !w.name.toLowerCase().includes(filterText.toLowerCase())) return false
     return true
   })
@@ -332,6 +345,98 @@ export const RacelabStudioView: React.FC = () => {
 
           {/* Category Tree & Widget List */}
           <div className="flex-1 overflow-y-auto p-2 space-y-4">
+
+            {/* ─── SEÇÃO: MEUS OVERLAYS PERSONALIZADOS ─── */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-indigo-400 border-b border-indigo-900/40">
+                <span className="flex items-center space-x-1.5">
+                  <span>✨</span>
+                  <span>Meus Overlays</span>
+                </span>
+                <span className="text-[10px] text-indigo-600 font-mono">({filteredCustomWidgets.length})</span>
+              </div>
+
+              {filteredCustomWidgets.length === 0 ? (
+                <div className="px-3 py-2 text-[10px] text-gray-600 italic font-mono">
+                  Nenhum overlay criado ainda.
+                </div>
+              ) : (
+                <div className="space-y-0.5">
+                  {filteredCustomWidgets.map((w) => {
+                    const isSelected = selectedWidgetId === w.id
+                    return (
+                      <div
+                        key={w.id}
+                        onClick={() => selectWidget(w.id)}
+                        className={`group flex items-center justify-between px-2.5 py-2 rounded-md text-xs cursor-pointer transition-all ${
+                          isSelected
+                            ? 'bg-indigo-950/60 border-l-2 border-indigo-500 text-white font-bold shadow-inner'
+                            : 'text-gray-400 hover:text-gray-200 hover:bg-[#15161f]'
+                        }`}
+                      >
+                        <div className="flex items-center space-x-2 truncate flex-1 min-w-0">
+                          <span className="text-sm flex-shrink-0">{w.icon || '✨'}</span>
+                          <span className="truncate">{w.name}</span>
+                        </div>
+
+                        <div className="flex items-center space-x-1 opacity-80 group-hover:opacity-100 flex-shrink-0 ml-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setEditingCustomWidgetId(w.id)
+                              selectWidget(w.id)
+                            }}
+                            className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-indigo-700/80 hover:bg-indigo-500 text-white transition-all"
+                            title="Abrir editor visual"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleOpenStandaloneOverlay(w)
+                            }}
+                            className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#e11d48]/80 hover:bg-[#ff003b] text-white transition-all"
+                            title="Abrir overlay em janela flutuante"
+                          >
+                            🚀
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleWidgetEnabled(w.id)
+                            }}
+                            className={`w-4 h-4 rounded-full flex items-center justify-center transition-all ${
+                              w.enabled
+                                ? 'bg-emerald-500 shadow-md shadow-emerald-500/50 text-[10px] text-white'
+                                : 'bg-[#262838] hover:bg-gray-600'
+                            }`}
+                          >
+                            {w.enabled && '✓'}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (window.confirm(`Excluir o overlay "${w.name}"?`)) {
+                                deleteWidget(w.id)
+                              }
+                            }}
+                            className="px-1 py-0.5 rounded text-[9px] font-bold text-red-500 hover:bg-red-950/50 transition-all"
+                            title="Excluir overlay"
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* ─── SEPARADOR ─── */}
+            <div className="border-t border-[#1e202c] mx-2" />
+
             {categories.map((cat) => {
               const catWidgets = filteredWidgets.filter((w) => w.category === cat.name)
               if (catWidgets.length === 0) return null
@@ -405,9 +510,9 @@ export const RacelabStudioView: React.FC = () => {
         <div className="p-3 border-t border-[#1e202c] bg-[#0c0d12]">
           <button
             onClick={() => setShowNewModal(true)}
-            className="w-full py-2 bg-[#1a1b26] hover:bg-[#222433] text-gray-200 border border-[#2b2d3d] hover:border-[#e11d48] rounded-md text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-md"
+            className="w-full py-2 bg-indigo-900/40 hover:bg-indigo-800/50 text-indigo-200 border border-indigo-800/60 hover:border-indigo-500 rounded-md text-xs font-bold transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-md"
           >
-            <span className="text-rose-500">＋</span>
+            <span className="text-indigo-400">＋</span>
             <span>CRIAR NOVO OVERLAY</span>
           </button>
         </div>
@@ -1089,85 +1194,87 @@ export const RacelabStudioView: React.FC = () => {
         const targetWidget = widgets.find((w) => w.id === editingCustomWidgetId)
         if (!targetWidget) return null
         const initialData: CustomOverlayData = targetWidget.customOverlayData || {
-          id: targetWidget.id,
-          name: targetWidget.name,
-          canvasWidth: targetWidget.width || 500,
-          canvasHeight: targetWidget.height || 300,
-          backgroundColor: '#0c0d12',
+          canvasWidth: 420,
+          canvasHeight: 240,
+          backgroundColor: '#0a0d14',
           elements: [
             {
-              id: 'elem-header',
-              name: 'Título Overlay',
-              type: 'text',
-              x: 16,
-              y: 16,
-              width: 200,
-              height: 28,
-              fontSize: 16,
-              fontWeight: 'bold',
-              textColor: '#ffffff',
-              staticText: targetWidget.name.toUpperCase(),
+              id: 'el-bg',
+              name: 'Fundo do Painel',
+              type: 'rectangle',
+              x: 0, y: 0, width: 420, height: 240,
               zIndex: 1,
+              backgroundColor: '#0a0d14',
+              borderColor: '#1e293b',
+              borderWidth: 2,
+              borderRadius: 12,
+              opacity: 1,
             },
             {
-              id: 'elem-speed',
-              name: 'Velocímetro',
+              id: 'el-speed-lbl',
+              name: 'Label Velocidade',
               type: 'text',
-              x: 16,
-              y: 60,
-              width: 160,
-              height: 48,
-              fontSize: 36,
-              fontWeight: '900',
-              textColor: '#38bdf8',
-              fontFamily: 'monospace',
-              binding: {
-                telemetryKey: 'speedKmh',
-                suffix: ' km/h',
-                decimals: 0,
-              },
+              x: 20, y: 30, width: 140, height: 24,
               zIndex: 2,
+              text: 'VELOCIDADE',
+              fontSize: 11,
+              fontWeight: 'bold',
+              textColor: '#94a3b8',
+              textAlign: 'left',
             },
             {
-              id: 'elem-rpm-gauge',
+              id: 'el-speed-val',
+              name: 'Valor Velocidade',
+              type: 'text',
+              x: 20, y: 54, width: 140, height: 50,
+              zIndex: 3,
+              text: '0',
+              fontSize: 42,
+              fontWeight: '900',
+              fontFamily: 'mono',
+              textColor: '#38bdf8',
+              textAlign: 'left',
+              binding: { propertyKey: 'speedKmh', suffix: ' KM/H', decimals: 0 },
+            },
+            {
+              id: 'el-gear-val',
+              name: 'Indicador de Marcha',
+              type: 'text',
+              x: 180, y: 35, width: 80, height: 70,
+              zIndex: 4,
+              text: 'N',
+              fontSize: 52,
+              fontWeight: '900',
+              fontFamily: 'mono',
+              textColor: '#f59e0b',
+              textAlign: 'center',
+              backgroundColor: '#111827',
+              borderColor: '#374151',
+              borderWidth: 2,
+              borderRadius: 8,
+              binding: { propertyKey: 'gear' },
+            },
+            {
+              id: 'el-rpm-bar',
               name: 'Barra de RPM',
               type: 'gauge-linear',
-              x: 16,
-              y: 120,
-              width: 320,
-              height: 18,
-              gaugeColor: '#e11d48',
-              backgroundColor: '#1f2233',
-              gaugeMin: 0,
-              gaugeMax: 8500,
-              binding: {
-                telemetryKey: 'rpm',
-              },
-              zIndex: 3,
+              x: 20, y: 125, width: 380, height: 18,
+              zIndex: 5,
+              minVal: 0,
+              maxVal: 8500,
+              fillColor: '#ef4444',
+              inactiveColor: '#1e293b',
+              borderRadius: 4,
+              binding: { propertyKey: 'rpm' },
             },
-            {
-              id: 'elem-gear',
-              name: 'Marcha',
-              type: 'text',
-              x: 200,
-              y: 60,
-              width: 80,
-              height: 48,
-              fontSize: 38,
-              fontWeight: '900',
-              textColor: '#e11d48',
-              textAlign: 'center',
-              binding: {
-                telemetryKey: 'gear',
-              },
-              zIndex: 4,
-            }
           ],
         }
 
         return (
           <CustomOverlayEditorModal
             initialData={initialData}
+            widgetName={targetWidget.name}
+            telemetryData={telemetryData}
             onClose={() => setEditingCustomWidgetId(null)}
             onSave={(savedData) => {
               updateWidgetProps(editingCustomWidgetId, {
