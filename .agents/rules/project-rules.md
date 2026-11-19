@@ -28,5 +28,7 @@ description: Project development rules, process cleanup, and packaging guideline
   - Pode ser ocultado ou fechado individualmente.
   - Deve responder ao clique com botão direito do mouse para exibir menu de ações mesmo quando em modo bloqueado.
 
-## 4. Comunicação
-- Responda sempre em Português do Brasil de forma concisa e direta ao ponto.
+## 5. Regra Estrita: NUNCA Fazer Commit ou Push sem Pedido Prévio
+- **PROIBIÇÃO TOTAL**: NUNCA execute `git commit`, `git push`, `git add` seguido de commit, ou qualquer variação que grave ou envie código para o repositório remoto sem que o usuário solicite explicitamente.
+- Frases que autorizam commit/push: *"faça commit"*, *"commit e push"*, *"sobe no github"*, *"push"*, *"versiona"*.
+- Em qualquer ciclo de desenvolvimento, o assistente pode APENAS editar arquivos e rodar `npm run build` ou `npm run dev` para validação — nunca versionar automaticamente.
