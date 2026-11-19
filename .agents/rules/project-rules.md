@@ -1,15 +1,14 @@
 ---
 name: project-guidelines
-description: Project development rules, process cleanup, and packaging guidelines for ApexTelemetry Studio.
+description: Project development rules, process cleanup, and packaging guidelines for SimRacing K.
 ---
 
-# ApexTelemetry Studio - Diretrizes de Desenvolvimento e Execução
+# SimRacing K - Diretrizes de Desenvolvimento e Execução
 
-## 1. Regra de Ouro: NÃO Compilar Binários Automaticamente
-- **NUNCA** execute `electron-builder` (`npx electron-builder`, `npm run dist:win`, etc.) automaticamente ou em cada interação.
-- A compilação de binários consome tempo e recursos excessivos de tokens e disco.
-- **Apenas compile ou gere instaladores/binários quando o USUÁRIO pedir explicitamente** (ex: *"gere os executáveis", "compile para windows e mac", "gere o build final"*).
-- Durante o desenvolvimento e ajustes, utilize apenas `npm run build` para validar o código TypeScript/Vite ou execute em modo dev.
+## 1. Regra Estrita: NUNCA Criar Executáveis ou Gerar Instaladores sem Pedido Prévio
+- **PROIBIÇÃO TOTAL**: NUNCA execute comandos de empacotamento, criação de instalador ou build de executáveis (`electron-builder`, `npm run dist:win`, `npx electron-builder --win`, etc.) sem que o usuário solicite explicitamente com frases como: *"gere o novo executável"*, *"crie o instalador"*, *"faça o build do windows"*.
+- Em qualquer ciclo de desenvolvimento, refatoração, correção de bugs ou testes, execute no máximo `npm run build` (para validação TypeScript/Vite) ou `npm run dev`.
+- **Nenhum arquivo binário, instalador (.exe, .msi, .zip) ou pasta de distribuição (`dist-binaries/`, `dist/`, etc.) deve ser versionado no Git ou gerado por iniciativa do assistente.**
 
 ## 2. Encerramento Completo da Aplicação (Zero Processos Órfãos)
 - Ao fechar a janela principal (`mainWindow` emitir `closed`), chame `app.quit()`.
@@ -27,6 +26,7 @@ description: Project development rules, process cleanup, and packaging guideline
   - Pode ser arrastado individualmente para qualquer tela/monitor conectado.
   - Pode ter seu fundo alternado para transparente (sem caixas ou caixilhos escuros forçados).
   - Pode ser ocultado ou fechado individualmente.
+  - Deve responder ao clique com botão direito do mouse para exibir menu de ações mesmo quando em modo bloqueado.
 
 ## 4. Comunicação
 - Responda sempre em Português do Brasil de forma concisa e direta ao ponto.
